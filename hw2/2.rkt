@@ -12,18 +12,24 @@
     (define blockMap (cdr program))
     (flowState varMap blockMap (caar blockMap)))
 
-(define (evaluateOperator state op arg1 arg2)
+(define (evaluateOperator state op args)
     (display " op, args:")
     (display op)
-    (display arg1)
-    (define a1 (flowEval state arg1))
-    (define a2 (flowEval state arg2))
-    (eval `(,op (quote ,a1) (quote ,a2))))
+    (display args)
+    (display " | ")
+    (define ae (map (lambda a (flowEval state a)) args))
+    (define toev `,(list* op ae))
+    (display " toev:")
+    (display toev)
+    (eval toev))
+
+(define (fs a b) a)
+(define (sd a b) b)
 
 (define (flowEval state expr)
     (match expr
         [`(quote ,value) value]
-        [`(,op ,arg1 ,arg2) (evaluateOperator state op arg1 arg2)]
+        [(and (list* op args) (list* _ _ _)) (evaluateOperator state op args)]
         [var (display var) (cdr (assoc var (flowState-varMap state)))]))
 
 (define (flowStep state)
