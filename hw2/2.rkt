@@ -13,15 +13,15 @@
     (flowState varMap blockMap (caar blockMap)))
 
 (define (evaluateOperator state op args)
-    (display " op, args:")
-    (display op)
-    (display args)
-    (display " | ")
-    (define ae (map (lambda (a) (flowEval state a)) args))
-    (define toev `,(list* op ae))
-    (display " toev:")
-    (display (eval op))
-    (apply (eval op) ae))
+    ;;; (display " op, args:")
+    ;;; (display op)
+    ;;; (display args)
+    ;;; (display " | ")
+    (define argsEvaled (map (lambda (a) (flowEval state a)) args))
+    ;;; (define toev `,(list* op ae))
+    ;;; (display " toev:")
+    ;;; (display (eval op))
+    (apply (eval op (make-base-namespace)) argsEvaled))
 
 (define (fs a b) a)
 (define (sd a b) b)
@@ -30,20 +30,31 @@
     (match expr
         [`(quote ,value) value]
         [(and (list* op args) (list* _ _ _)) (evaluateOperator state op args)]
-        [var (display var) (cdr (assoc var (flowState-varMap state)))]))
+        [var (cdr (assoc var (flowState-varMap state)))]))
+
+(define (changeVar list var val)
+    (map (lambda (key . oldval)
+            (if (eq? key var)
+                (cons key val)
+                (cons key oldval)))
+        list))
 
 (define (flowStep state)
     (define block (cdr (assoc (flowState-currentLabel state) (flowState-blockMap state))))
+    ;;; (display (flowState-currentLabel state))
     (for ([aj block])
         (match aj
             [`(:= ,var ,expr)
-                undefined]
+                (set-flowState-varMap! state (changeVar (flowState-varMap state) var (flowEval state expr)))
+                state]
             [`(goto ,label)
-                undefined]
+                (set-flowState-currentLabel! state label)
+                state]
             [`(if ,expr ,ifTrue ,ifFalse)
-                undefined]
+                (set-flowState-currentLabel! state (if (flowEval state expr) ifTrue ifFalse))
+                state]
             [`(return ,expr)
-                undefined]))
+                (flowEval state expr)]))
     )
 
 
@@ -58,6 +69,10 @@
      (trash (:= valuelist (quote (1 2 3))))
     ))
 
+
+(define testState (flowParse find_name '(x (a x c) (z t e))))
+
 (define test1
-    (flowStep (flowParse find_name '(x y z))))
-(define testState (flowParse find_name '(x y z)))
+    (flowStep testState))
+
+
